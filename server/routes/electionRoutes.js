@@ -66,26 +66,10 @@ router.post('/session', (req, res) => {
     return res.status(403).json({ error: `Voting is unavailable. Election status: ${election.status}` });
   }
 
-  const activeSession = queryGet(`SELECT * FROM voting_sessions WHERE election_id = ? AND status = 'ACTIVE'`, [election.id]);
-  
-  if (activeSession) {
-    if (new Date(activeSession.expires_at) < new Date()) {
-      // It's expired, update it
-      queryRun(`UPDATE voting_sessions SET status = 'EXPIRED' WHERE id = ?`, [activeSession.id]);
-    } else {
-      // Resume the active session
-      return res.json({
-        sessionId: activeSession.id,
-        electionId: election.id,
-        electionStatus: election.status,
-        presidentVoted: !!activeSession.president_voted,
-        vicePresidentVoted: !!activeSession.vice_president_voted,
-        expiresAt: activeSession.expires_at,
-        message: 'Resumed existing active session'
-      });
-    }
-  }
+  // Cleanup any globally expired sessions to keep DB clean
+  queryRun(`UPDATE voting_sessions SET status = 'EXPIRED' WHERE status = 'ACTIVE' AND expires_at < ?`, [new Date().toISOString()]);
 
+  // Create a UNIQUE session for this request so multiple voting stations can operate simultaneously
   const sessionId = `sess-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
   const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 mins session lifetime
 

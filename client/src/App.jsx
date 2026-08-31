@@ -387,21 +387,7 @@ function VotingStationWelcome({ election, electionLoading, isElectionActive, isE
           </div>
         )}
 
-        {/* Privacy Note */}
-        <div style={{
-          marginTop: '2rem',
-          padding: '1rem',
-          background: 'rgba(99, 102, 241, 0.06)',
-          border: '1px solid rgba(99, 102, 241, 0.2)',
-          borderRadius: 'var(--radius-md)',
-          fontSize: '0.82rem',
-          color: 'var(--text-muted)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.6rem'
-        }}>
-          🔒 <span><strong style={{ color: 'var(--text-main)' }}>Privacy Guaranteed:</strong> No live vote counts are shown during voting. Results are revealed only after election closure. All votes are cryptographically secured.</span>
-        </div>
+
       </div>
     </div>
   );

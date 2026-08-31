@@ -139,6 +139,7 @@ router.post('/candidates', (req, res) => {
 
     res.json({ success: true, message: 'Candidate added successfully.', candidateId: candId });
   } catch (e) {
+    console.error("Error adding candidate:", e);
     if (e.message && e.message.includes('UNIQUE')) {
       return res.status(409).json({ error: `Candidate number ${number} is already assigned in this contest.` });
     }
@@ -171,59 +172,6 @@ router.delete('/candidates/:id', (req, res) => {
 
   queryRun(`DELETE FROM candidates WHERE id = ?`, [id]);
   res.json({ success: true, message: 'Candidate deleted.' });
-});
-
-// 6. Simulation Runner for N Supervised Voting Sessions
-router.post('/simulate', (req, res) => {
-  const count = parseInt(req.body.count) || 100;
-  const election = queryGet(`SELECT id FROM elections ORDER BY created_at DESC LIMIT 1`);
-  if (!election) return res.status(404).json({ error: 'No election found.' });
-
-  const presPos = queryGet(`SELECT id FROM positions WHERE election_id = ? AND name = 'PRESIDENT'`, [election.id]);
-  const vpPos = queryGet(`SELECT id FROM positions WHERE election_id = ? AND name = 'VICE_PRESIDENT'`, [election.id]);
-
-  const presCandidates = queryAll(`SELECT id FROM candidates WHERE position_id = ?`, [presPos.id]);
-  const vpCandidates = queryAll(`SELECT id FROM candidates WHERE position_id = ?`, [vpPos.id]);
-
-  if (presCandidates.length === 0 || vpCandidates.length === 0) {
-    return res.status(400).json({ error: 'Candidates must exist for both positions before running simulation.' });
-  }
-
-  let presVotesAdded = 0;
-  let vpVotesAdded = 0;
-
-  for (let i = 1; i <= count; i++) {
-    const sessionId = `sim-sess-${Date.now()}-${i}-${crypto.randomBytes(2).toString('hex')}`;
-    const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-
-    queryRun(
-      `INSERT INTO voting_sessions (id, election_id, president_voted, vice_president_voted, expires_at, status)
-       VALUES (?, ?, 1, 1, ?, 'COMPLETED')`,
-      [sessionId, election.id, expiresAt]
-    );
-
-    const randomPresCand = presCandidates[Math.floor(Math.random() * presCandidates.length)];
-    queryRun(
-      `INSERT INTO votes (id, election_id, position_id, candidate_id, voting_session_id) VALUES (?, ?, ?, ?, ?)`,
-      [`vote-sim-pres-${i}-${Date.now()}`, election.id, presPos.id, randomPresCand.id, sessionId]
-    );
-    presVotesAdded++;
-
-    const randomVpCand = vpCandidates[Math.floor(Math.random() * vpCandidates.length)];
-    queryRun(
-      `INSERT INTO votes (id, election_id, position_id, candidate_id, voting_session_id) VALUES (?, ?, ?, ?, ?)`,
-      [`vote-sim-vp-${i}-${Date.now()}`, election.id, vpPos.id, randomVpCand.id, sessionId]
-    );
-    vpVotesAdded++;
-  }
-
-  res.json({
-    success: true,
-    message: `Simulation completed. Created ${count} supervised voting sessions and recorded ${presVotesAdded + vpVotesAdded} votes.`,
-    sessionsCreated: count,
-    presVotesAdded,
-    vpVotesAdded
-  });
 });
 
 // 7. Reset All Votes & Sessions (Start New Election)

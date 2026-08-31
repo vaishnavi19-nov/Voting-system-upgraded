@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Users, Vote, Plus, Trash2, Edit3, Play, Download, RotateCcw, AlertTriangle, CheckCircle2, BarChart2 } from 'lucide-react';
 
 export default function AdminDashboard({ adminToken, apiBaseUrl, onStatusChanged }) {
-  const [activeTab, setActiveTab] = useState('LIVE_STATS'); // 'LIVE_STATS' | 'PRESIDENT_CANDS' | 'VP_CANDS' | 'VOTERS' | 'SIMULATION'
+  const [activeTab, setActiveTab] = useState('LIVE_STATS'); // 'LIVE_STATS' | 'PRESIDENT_CANDS' | 'VP_CANDS' | 'VOTERS' | 'DATA_EXPORTS'
   const [liveStats, setLiveStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
@@ -16,9 +16,7 @@ export default function AdminDashboard({ adminToken, apiBaseUrl, onStatusChanged
   const [candDesc, setCandDesc] = useState('');
   const [candParty, setCandParty] = useState('');
 
-  // Simulation State
-  const [simCount, setSimCount] = useState(100);
-  const [simulating, setSimulating] = useState(false);
+  const [isSavingCand, setIsSavingCand] = useState(false);
 
   useEffect(() => {
     fetchLiveStats();
@@ -64,6 +62,7 @@ export default function AdminDashboard({ adminToken, apiBaseUrl, onStatusChanged
 
   const handleAddCandidate = async (e) => {
     e.preventDefault();
+    setIsSavingCand(true);
     try {
       const res = await fetch(`${apiBaseUrl}/api/admin/candidates`, {
         method: 'POST',
@@ -88,7 +87,9 @@ export default function AdminDashboard({ adminToken, apiBaseUrl, onStatusChanged
       resetCandForm();
       fetchLiveStats();
     } catch (err) {
-      setMsg({ type: 'error', text: err.message });
+      setMsg({ type: 'error', text: err.message || 'An error occurred' });
+    } finally {
+      setIsSavingCand(false);
     }
   };
 
@@ -106,30 +107,6 @@ export default function AdminDashboard({ adminToken, apiBaseUrl, onStatusChanged
       fetchLiveStats();
     } catch (err) {
       setMsg({ type: 'error', text: err.message });
-    }
-  };
-
-  const handleRunSimulation = async () => {
-    setSimulating(true);
-    setMsg({ type: '', text: '' });
-    try {
-      const res = await fetch(`${apiBaseUrl}/api/admin/simulate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${adminToken}`
-        },
-        body: JSON.stringify({ count: simCount })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-
-      setMsg({ type: 'success', text: data.message });
-      fetchLiveStats();
-    } catch (err) {
-      setMsg({ type: 'error', text: err.message });
-    } finally {
-      setSimulating(false);
     }
   };
 
@@ -274,10 +251,10 @@ export default function AdminDashboard({ adminToken, apiBaseUrl, onStatusChanged
           Vice President Candidates
         </button>
         <button
-          className={`tab-btn ${activeTab === 'SIMULATION' ? 'active' : ''}`}
-          onClick={() => setActiveTab('SIMULATION')}
+          className={`tab-btn ${activeTab === 'DATA_EXPORTS' ? 'active' : ''}`}
+          onClick={() => setActiveTab('DATA_EXPORTS')}
         >
-          1,000 Voter Stress Test Suite
+          Election Data & Exports
         </button>
       </div>
 
@@ -391,40 +368,21 @@ export default function AdminDashboard({ adminToken, apiBaseUrl, onStatusChanged
         </div>
       )}
 
-      {/* TAB 4: SIMULATION STRESS TEST SUITE */}
-      {activeTab === 'SIMULATION' && (
+      {/* TAB 4: DATA EXPORTS AND RESET */}
+      {activeTab === 'DATA_EXPORTS' && (
         <div className="glass-card">
           <h3 style={{ fontSize: '1.4rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Play style={{ color: 'var(--primary)' }} />
-            1,000 Voter Scale Simulation Suite
+            <RotateCcw style={{ color: 'var(--primary)' }} />
+            Manage Election Data
           </h3>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', marginBottom: '1.5rem' }}>
-            Simulate realistic voting patterns across ~1,000 voters to test database unique constraints, atomic transactions, turnout calculations, and tie-handling.
+            Export final voting results, download detailed timestamp logs, or reset the entire system for a new election.
           </p>
 
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Number of Voters to Simulate</label>
-              <select className="form-select" value={simCount} onChange={e => setSimCount(parseInt(e.target.value))}>
-                <option value={50}>50 Simulated Voters</option>
-                <option value={200}>200 Simulated Voters</option>
-                <option value={500}>500 Simulated Voters</option>
-                <option value={1000}>1,000 Full Scale Voters</option>
-              </select>
-            </div>
-
-            <button
-              className="btn btn-primary"
-              style={{ marginTop: '1.4rem' }}
-              onClick={handleRunSimulation}
-              disabled={simulating}
-            >
-              {simulating ? 'Simulating Votes...' : 'Run Vote Simulation'}
-            </button>
-
             <button
               className="btn btn-secondary"
-              style={{ marginTop: '1.4rem', borderColor: 'rgba(239, 68, 68, 0.4)', color: '#FCA5A5' }}
+              style={{ borderColor: 'rgba(239, 68, 68, 0.4)', color: '#FCA5A5' }}
               onClick={handleResetVotes}
             >
               <RotateCcw size={16} />
@@ -433,7 +391,6 @@ export default function AdminDashboard({ adminToken, apiBaseUrl, onStatusChanged
 
             <button
               className="btn btn-secondary"
-              style={{ marginTop: '1.4rem' }}
               onClick={handleExportCsv}
             >
               <Download size={16} />
@@ -442,7 +399,6 @@ export default function AdminDashboard({ adminToken, apiBaseUrl, onStatusChanged
 
             <button
               className="btn btn-primary"
-              style={{ marginTop: '1.4rem' }}
               onClick={handleExportDetailedCsv}
             >
               <Download size={16} />
@@ -477,8 +433,37 @@ export default function AdminDashboard({ adminToken, apiBaseUrl, onStatusChanged
               </div>
 
               <div className="form-group">
-                <label className="form-label">Photo URL</label>
-                <input type="url" className="form-input" placeholder="https://..." value={candPhoto} onChange={e => setCandPhoto(e.target.value)} />
+                <label className="form-label">Candidate Photo</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Upload Image File (PNG, JPG, WEBP)</label>
+                    <input 
+                      type="file" 
+                      className="form-input" 
+                      accept="image/png, image/jpeg, image/jpg, image/webp" 
+                      onChange={e => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setCandPhoto(reader.result);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }} 
+                    />
+                  </div>
+                  <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 'bold' }}>OR</div>
+                  <div>
+                    <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Provide Image URL</label>
+                    <input type="text" className="form-input" placeholder="https://..." value={candPhoto} onChange={e => setCandPhoto(e.target.value)} />
+                  </div>
+                </div>
+                {candPhoto && (
+                  <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                    <img src={candPhoto} alt="Preview" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '50%', border: '2px solid var(--primary)' }} />
+                  </div>
+                )}
               </div>
 
               <div className="form-group">
@@ -487,11 +472,11 @@ export default function AdminDashboard({ adminToken, apiBaseUrl, onStatusChanged
               </div>
 
               <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowCandModal(false)}>
+                <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowCandModal(false)} disabled={isSavingCand}>
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
-                  Save Candidate
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={isSavingCand}>
+                  {isSavingCand ? 'Saving...' : 'Save Candidate'}
                 </button>
               </div>
             </form>
