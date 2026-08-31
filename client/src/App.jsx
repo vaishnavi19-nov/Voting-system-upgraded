@@ -9,7 +9,7 @@ import ResultsDashboard from './components/ResultsDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import { BarChart3 } from 'lucide-react';
 
-const API_BASE_URL = `https://voting-system-upgraded.onrender.com/`;
+const API_BASE_URL = 'https://voting-system-upgraded.onrender.com';
 
 export default function App() {
   // Admin state
