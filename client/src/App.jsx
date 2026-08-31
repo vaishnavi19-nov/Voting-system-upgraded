@@ -9,7 +9,7 @@ import ResultsDashboard from './components/ResultsDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import { BarChart3 } from 'lucide-react';
 
-const API_BASE_URL = `http://${window.location.hostname}:5000`;
+const API_BASE_URL = `https://voting-system-upgraded.onrender.com/`;
 
 export default function App() {
   // Admin state
@@ -64,7 +64,7 @@ export default function App() {
       if (res.ok) {
         setSessionId(data.sessionId);
         setVotingStatus({ president: data.presidentVoted, vicePresident: data.vicePresidentVoted });
-        
+
         if (data.presidentVoted && !data.vicePresidentVoted) {
           setActiveStage('VICE_PRESIDENT');
         } else if (data.presidentVoted && data.vicePresidentVoted) {
